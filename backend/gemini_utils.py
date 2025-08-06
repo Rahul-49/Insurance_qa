@@ -61,6 +61,7 @@ def get_decision_from_llm(query: str, context_chunks: list) -> dict:
     # Construct the prompt
     prompt = f"""
 You are an expert AI assistant for processing insurance claims. Your task is to act as a policy adjudicator.
+Automatically understand whether user is trying to talk causually or related to insurance.
 Carefully analyze the user's query and the provided policy clauses.
 You MUST base your decision ONLY on the information contained within the provided policy clauses. Do not use any external knowledge.
 
@@ -77,7 +78,7 @@ Your final output MUST be a single, valid JSON object with the following structu
   "Decision": "Approved" | "Rejected" | "Indeterminate",
   "Amount": <integer>,
   "Justification": {{
-    "summary": "<string: A concise, informative explanation in atmost 4 sentences for your decision.>",
+    "summary": "<string: A concise, informative explanation in atmost 2 sentences for your decision.>",
     "clauses": [
       {{
         "clause_number": "<string: The specific clause number, e.g., 'D.2.f.27'. If not available, use 'N/A'>",
@@ -107,4 +108,5 @@ Your final output MUST be a single, valid JSON object with the following structu
         raise ValueError("The model returned an invalid JSON object.")
     except Exception as e:
         logger.error(f"Error getting decision from Gemini: {e}")
+
         raise
