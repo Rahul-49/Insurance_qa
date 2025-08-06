@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+pinecone
+pdfplumber
+python-docx
+python-dotenv
+google-generativeai
+nltk
+
+# LangChain dependencies
+langchain
+langchain-google-genai
+langchain-pinecone
+langchain-community
