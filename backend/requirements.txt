@@ -11,4 +11,6 @@ nltk
 langchain
 langchain-google-genai
 langchain-pinecone
+
 langchain-community
+python-multipart
