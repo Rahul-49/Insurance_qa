@@ -15,7 +15,9 @@ app = FastAPI(
 # your specific frontend domain(s), e.g., ["https://your-app.vercel.app"].
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
+    allow_origins=[
+        "https://insurance-qa-kappa.vercel.app",  # ✅ This is YOUR frontend!
+    ],  # Allows all origins
     allow_credentials=True,
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
@@ -28,3 +30,4 @@ if __name__ == "__main__":
     # This block allows running the server directly for development
     # Use: python main.py
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
