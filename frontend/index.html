@@ -44,7 +44,6 @@
             font-weight: 600;
             flex-shrink: 0;
         }
-        /* --- MODIFIED: Styles for URL Input --- */
         #upload-section {
             padding: 1rem;
             background: #fdfdfd;
@@ -54,14 +53,28 @@
             gap: 10px;
             flex-shrink: 0;
         }
-        #pdf-url-input {
-            flex-grow: 1;
+        #upload-label {
+            background-color: var(--secondary-color);
             border: 1px solid #ccc;
             border-radius: 4px;
             padding: 8px 12px;
+            cursor: pointer;
             font-size: 0.9rem;
+            white-space: nowrap;
         }
-        #process-url-button {
+        #upload-label:hover {
+            background-color: #e2e6ea;
+        }
+        #file-name-display {
+            font-style: italic;
+            font-size: 0.9rem;
+            color: #6c757d;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-grow: 1;
+        }
+        #upload-button {
             background-color: var(--success-color);
             color: white;
             border: none;
@@ -69,17 +82,15 @@
             padding: 8px 12px;
             font-size: 0.9rem;
             cursor: pointer;
-            white-space: nowrap;
         }
-        #process-url-button:disabled {
+        #upload-button:disabled {
             background-color: #aaa;
             cursor: not-allowed;
         }
         #upload-status {
             font-size: 0.85rem;
             text-align: center;
-            padding: 4px 1rem;
-            min-height: 1.2em;
+            padding: 4px 0;
         }
         .success { color: var(--success-color); }
         .error { color: var(--error-color); }
@@ -112,6 +123,8 @@
             border-bottom-left-radius: 4px;
         }
         
+        /* --- REMOVED styles for JSON formatting --- */
+
         #chat-form {
             display: flex;
             padding: 1rem;
@@ -126,6 +139,10 @@
             font-size: 1rem;
             margin-right: 0.5rem;
             outline: none;
+            transition: border-color 0.2s;
+        }
+        #user-input:focus {
+            border-color: var(--primary-color);
         }
         #send-button {
             background-color: var(--primary-color);
@@ -140,6 +157,13 @@
             align-items: center;
             transition: background-color 0.2s;
             flex-shrink: 0;
+        }
+        #send-button:hover {
+            background-color: #0056b3;
+        }
+        #send-button svg {
+            width: 24px;
+            height: 24px;
         }
         #loading {
             align-self: flex-start;
@@ -171,10 +195,13 @@
     <div id="chat-header">Insurance Policy Assistant</div>
     
     <div id="upload-section">
-        <input type="text" id="pdf-url-input" placeholder="Enter public PDF URL here...">
-        <button id="process-url-button">Process URL</button>
+        <input type="file" id="pdf-upload-input" accept=".pdf,.docx,.txt" style="display: none;"/>
+        <label for="pdf-upload-input" id="upload-label">Choose File</label>
+        <span id="file-name-display">No file chosen</span>
+        <button id="upload-button">Upload</button>
     </div>
     <div id="upload-status"></div>
+
     <div id="chat-box">
         </div>
     <div id="loading" class="hidden">
@@ -183,7 +210,7 @@
         <span></span>
     </div>
     <form id="chat-form">
-        <input type="text" id="user-input" placeholder="Ask a question about the policy..." autocomplete="off">
+        <input type="text" id="user-input" placeholder="Ask a question about your policy..." autocomplete="off">
         <button id="send-button" type="submit">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
@@ -193,98 +220,120 @@
 </div>
 
 <script>
-    // --- DOM Element References ---
     const chatBox = document.getElementById('chat-box');
     const chatForm = document.getElementById('chat-form');
     const userInput = document.getElementById('user-input');
     const loadingIndicator = document.getElementById('loading');
     
-    // MODIFIED: New elements for URL processing
-    const pdfUrlInput = document.getElementById('pdf-url-input');
-    const processUrlButton = document.getElementById('process-url-button');
+    const pdfUploadInput = document.getElementById('pdf-upload-input');
+    const uploadButton = document.getElementById('upload-button');
+    const fileNameDisplay = document.getElementById('file-name-display');
     const uploadStatus = document.getElementById('upload-status');
 
-    // --- API Endpoints (Backend URL remains the same) ---
-    const CHAT_API_URL = 'https://insurance-qa.onrender.com/api/chat';
-
-    const UPLOAD_API_URL = 'https://insurance-qa.onrender.com/api/upload';
+    const CHAT_API_URL = 'http://localhost:8000/api/chat';
+    const UPLOAD_API_URL = 'http://localhost:8000/api/upload';
 
     let sessionId = null;
 
-    // --- Core Functions (no changes here) ---
-    function generateUUID() { /* ...omitted for brevity... */ }
-    function addMessage(message, sender) { /* ...omitted for brevity... */ }
-    function scrollToBottom() { /* ...omitted for brevity... */ }
-    function toggleLoading(show) { /* ...omitted for brevity... */ }
-    
-    // --- MODIFIED: New Event Listener for processing URL ---
-    processUrlButton.addEventListener('click', async () => {
-        const url = pdfUrlInput.value.trim();
-        if (!url) {
-            uploadStatus.textContent = 'Please enter a URL first.';
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    // --- MODIFIED: This function now simply displays plain text ---
+    function addMessage(message, sender) {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', `${sender}-message`);
+        messageElement.textContent = message; // Set the text directly
+        chatBox.appendChild(messageElement);
+        scrollToBottom();
+    }
+    // --- END MODIFICATION ---
+
+    function scrollToBottom() {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function toggleLoading(show) {
+        loadingIndicator.classList.toggle('hidden', !show);
+        if (show) scrollToBottom();
+    }
+
+    // Event Listeners
+    pdfUploadInput.addEventListener('change', () => {
+        fileNameDisplay.textContent = pdfUploadInput.files.length > 0 ? pdfUploadInput.files[0].name : 'No file chosen';
+    });
+
+    uploadButton.addEventListener('click', async () => {
+        if (pdfUploadInput.files.length === 0) {
+            uploadStatus.textContent = 'Please choose a file first.';
             uploadStatus.className = 'error';
             return;
         }
 
-        uploadStatus.textContent = 'Downloading from URL...';
+        const formData = new FormData();
+        formData.append('file', pdfUploadInput.files[0]);
+
+        uploadStatus.textContent = 'Uploading...';
         uploadStatus.className = '';
-        processUrlButton.disabled = true;
+        uploadButton.disabled = true;
 
         try {
-            // 1. Fetch the PDF from the provided URL
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`Failed to download file (Status: ${response.status})`);
-            }
-            const blob = await response.blob();
-
-            // 2. Create a File object from the downloaded blob
-            const fileName = url.substring(url.lastIndexOf('/') + 1) || 'document.pdf';
-            const pdfFile = new File([blob], fileName, { type: 'application/pdf' });
-
-            // 3. Send this file to the backend using FormData
-            const formData = new FormData();
-            formData.append('file', pdfFile);
-
-            uploadStatus.textContent = 'Processing document...';
-            const uploadResponse = await fetch(UPLOAD_API_URL, {
+            const response = await fetch(UPLOAD_API_URL, {
                 method: 'POST',
                 body: formData,
             });
-
-            const data = await uploadResponse.json();
-            if (!uploadResponse.ok) {
-                throw new Error(data.detail || 'Backend failed to process the document');
-            }
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || 'Upload failed');
             
             uploadStatus.textContent = data.message;
             uploadStatus.className = 'success';
             addMessage(`I have now finished learning: "${data.filename}". You can ask me any questions about it.`, 'bot');
 
         } catch (error) {
-            console.error('Processing Error:', error);
             uploadStatus.textContent = `Error: ${error.message}`;
             uploadStatus.className = 'error';
         } finally {
-            processUrlButton.disabled = false;
+            uploadButton.disabled = false;
         }
     });
 
+    chatForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const userMessage = userInput.value.trim();
+        if (!userMessage) return;
 
-    // Chat form submission logic (no changes here)
-    chatForm.addEventListener('submit', async (event) => { /* ...omitted for brevity... */ });
-    
-    // Add initial welcome message
-    window.addEventListener('load', () => {
-        addMessage('Hello! Please provide a public PDF URL to begin.', 'bot');
+        addMessage(userMessage, 'user');
+        userInput.value = '';
+        toggleLoading(true);
+
+        if (!sessionId) {
+            sessionId = generateUUID();
+        }
+
+        try {
+            const response = await fetch(CHAT_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: userMessage, session_id: sessionId }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || 'Network response was not ok');
+
+            addMessage(data.answer, 'bot');
+
+        } catch (error) {
+            addMessage(`Sorry, an error occurred: ${error.message}`, 'bot');
+        } finally {
+            toggleLoading(false);
+        }
     });
 
-    // --- Full function definitions omitted for brevity but are unchanged ---
-    function generateUUID() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8); return v.toString(16); }); }
-    function addMessage(message, sender) { const messageElement = document.createElement('div'); messageElement.classList.add('message', `${sender}-message`); messageElement.textContent = message; chatBox.appendChild(messageElement); scrollToBottom(); }
-    function scrollToBottom() { chatBox.scrollTop = chatBox.scrollHeight; }
-    function toggleLoading(show) { loadingIndicator.classList.toggle('hidden', !show); if (show) scrollToBottom(); }
-    chatForm.addEventListener('submit', async (event) => { event.preventDefault(); const userMessage = userInput.value.trim(); if (!userMessage) return; addMessage(userMessage, 'user'); userInput.value = ''; toggleLoading(true); if (!sessionId) { sessionId = generateUUID(); } try { const response = await fetch(CHAT_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: userMessage, session_id: sessionId }), }); const data = await response.json(); if (!response.ok) throw new Error(data.detail || 'Network response was not ok'); addMessage(data.answer, 'bot'); } catch (error) { addMessage(`Sorry, an error occurred: ${error.message}`, 'bot'); } finally { toggleLoading(false); } });
+    window.addEventListener('load', () => {
+        addMessage('Hello! Please upload a policy document to begin.', 'bot');
+    });
 </script>
 
 </body>
