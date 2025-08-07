@@ -90,7 +90,6 @@ Your final output MUST be a single, valid JSON object with the following structu
   }}
 }}
 """
-
     try:
         model = genai.GenerativeModel('gemini-pro')
         response = model.generate_content(
@@ -108,5 +107,4 @@ Your final output MUST be a single, valid JSON object with the following structu
         raise ValueError("The model returned an invalid JSON object.")
     except Exception as e:
         logger.error(f"Error getting decision from Gemini: {e}")
-
         raise
